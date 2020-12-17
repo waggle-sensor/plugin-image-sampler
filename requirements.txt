@@ -1,2 +1,1 @@
-opencv-python-headless
 git+https://github.com/waggle-sensor/pywaggle@v0.39.1
