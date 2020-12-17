@@ -8,6 +8,7 @@
 from datetime import datetime, timezone
 import time
 import os
+import argparse
 
 import cv2
 
@@ -19,17 +20,18 @@ plugin.init()
 
 def run(args):
     print("Image sample starts...")
-    os.makedirs(args.out_dir, exist_ok=True)
+    if args.out_dir != "":
+        os.makedirs(args.out_dir, exist_ok=True)
 
-    with open_data_source(args.stream) as cam:
+    with open_data_source(id=args.stream) as cam:
         while True:
             try:
                 ts_ns, image = cam.get(timeout=5)
                 if args.out_dir != "":
                     # We lose nano seconds precision here
                     dt = datetime.fromtimestamp(ts_ns / 10e8)
-                    filename = dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z')
-                    cv2.imwrite(filename, image)
+                    filename = dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg')
+                    cv2.imwrite(os.path.join(args.out_dir, filename), image)
                 else:
                     cv2.imwrite('/tmp/sample.jpg', image)
                     plugin.upload_file('/tmp/sample.jpg')
@@ -42,7 +44,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-stream', dest='stream',
-        action='store', default="camera"
+        action='store', default="camera",
         help='ID or name of a stream, e.g. sample')
     parser.add_argument(
         '-out-dir', dest='out_dir',
