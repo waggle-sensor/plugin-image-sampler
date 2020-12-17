@@ -5,6 +5,7 @@ namespace: "sage"
 source:
   architectures :
     - "linux/amd64"
+    - "linux/arm64"
   url: "https://github.com/waggle-sensor/plugin-imagesampler.git"
 resources:
   - type: "RGB_image_producer"
@@ -13,4 +14,6 @@ inputs:
   - id: "interval"
     type: "int"
   - id: "stream"
+    type: "string"
+  - id: "out-dir"
     type: "string"
