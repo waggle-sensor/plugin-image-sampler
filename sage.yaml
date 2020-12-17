@@ -1,0 +1,16 @@
+name: "imagesampler"
+description: "Image sampler"
+version : "0.1.0"
+namespace: "sage"
+source:
+  architectures :
+    - "linux/amd64"
+  url: "https://github.com/waggle-sensor/plugin-imagesampler.git"
+resources:
+  - type: "RGB_image_producer"
+    min_resolution: "600x800"
+inputs:
+  - id: "interval"
+    type: "int"
+  - id: "stream"
+    type: "string"
