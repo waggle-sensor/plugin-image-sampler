@@ -19,25 +19,35 @@ plugin.init()
 
 
 def run(args):
-    print("Image sample starts...")
+    print(f"starting image sampler. will sample every {args.interval}s", flush=True)
+
     if args.out_dir != "":
         os.makedirs(args.out_dir, exist_ok=True)
 
     with open_data_source(id=args.stream) as cam:
         while True:
+            time.sleep(args.interval)
+
+            print("getting image", flush=True)
             try:
                 ts_ns, image = cam.get(timeout=5)
-                if args.out_dir != "":
-                    # We lose nano seconds precision here
-                    dt = datetime.fromtimestamp(ts_ns / 10e8)
-                    filename = dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg')
-                    cv2.imwrite(os.path.join(args.out_dir, filename), image)
-                else:
-                    cv2.imwrite('/tmp/sample.jpg', image)
-                    plugin.upload_file('/tmp/sample.jpg')
             except TimeoutError:
-                pass
-            time.sleep(args.interval)
+                print("get image timed out", flush=True)
+                continue
+
+            if args.out_dir != "":
+                # NOTE(YK) We lose nano seconds precision here
+                dt = datetime.fromtimestamp(ts_ns / 1e9)
+                path = os.path.join(args.out_dir,
+                                    dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+            else:
+                path = "sample.jpg"
+
+            print("writing image", flush=True)
+            cv2.imwrite(path, image)
+            
+            print("uploading image", flush=True)
+            plugin.upload_file(path)
 
 
 if __name__ == '__main__':
@@ -52,6 +62,6 @@ if __name__ == '__main__':
         help='Path to save images locally in %Y-%m-%dT%H:%M:%S%z.jpg format')
     parser.add_argument(
         '-interval', dest='interval',
-        action='store', default=60, type=int,
+        action='store', default=300, type=int,
         help='Inference interval in seconds')
     run(parser.parse_args())
