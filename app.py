@@ -30,13 +30,14 @@ def extract_topics(expr):
     return topics
 
 
-def get_sample(stream, timeout=5):
+def get_sample(stream, retry=5, timeout=5):
     with open_data_source(id=stream) as cam:
-        try:
-            ts_ns, image = cam.get(timeout=timeout)
-            return ts_ns, image
-        except TimeoutError:
-            print("get image timed out", flush=True)
+        for n in range(1, retry + 1):
+            try:
+                ts_ns, image = cam.get(timeout=timeout)
+                return ts_ns, image
+            except TimeoutError:
+                print(f'get image timed out {n} time(s)', flush=True)
         return None, None
 
 
@@ -60,7 +61,7 @@ def run_on_event(args):
             print(f'{args.condition} is valid. getting image', flush=True)
             ts_ns, image = get_sample(args.stream)
             if image is None:
-                continue
+                raise Exception('failed to receive an image. halting the sampling...')
 
             if args.out_dir != "":
                 # NOTE(YK) We lose nano seconds precision here
@@ -92,7 +93,7 @@ def run_periodically(args):
         
         ts_ns, image = get_sample(args.stream)
         if image is None:
-            continue
+            raise Exception('failed to receive an image. halting the sampling...')
 
         if args.out_dir != "":
             # NOTE(YK) We lose nano seconds precision here
