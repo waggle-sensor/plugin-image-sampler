@@ -1,6 +1,6 @@
-FROM waggle/plugin-opencv:4.1.1
+FROM waggle/plugin-base:1.1.1-base
 LABEL version="0.2.0" \
-      description="Image sampler"
+      description="Periodical/Trigger-based Image sampler"
 
 # COPY app.py /app/
 COPY app.py requirements.txt /app/

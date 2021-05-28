@@ -1,5 +1,5 @@
 name: "image-sampler"
-description: "Image sampler"
+description: "Periodical/Trigger-based Image sampler"
 version : "0.2.0"
 namespace: "sage"
 source:

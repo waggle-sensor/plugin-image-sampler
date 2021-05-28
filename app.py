@@ -30,6 +30,16 @@ def extract_topics(expr):
     return topics
 
 
+def get_sample(stream, timeout=5):
+    with open_data_source(id=stream) as cam:
+        try:
+            ts_ns, image = cam.get(timeout=timeout)
+            return ts_ns, image
+        except TimeoutError:
+            print("get image timed out", flush=True)
+        return None, None
+
+
 def run_on_event(args):
     print(f'starting image sampler whenever {args.condition} becomes valid', flush=True)
     topics = {}
@@ -38,55 +48,18 @@ def run_on_event(args):
         topics[t] = 0.
         plugin.subscribe(t.replace('_', '.'))
 
-    with open_data_source(id=args.stream) as cam:
-        cooldown = time.time()
-        while True:
-            msg = plugin.get()
-            topics[msg.name.replace('.', '_')] = msg.value
-            if time.time() < cooldown:
-                time.sleep(0.1)
-                continue
+    cooldown = time.time()
+    while True:
+        msg = plugin.get()
+        topics[msg.name.replace('.', '_')] = msg.value
+        if time.time() < cooldown:
+            time.sleep(0.1)
+            continue
 
-            if eval(condition, topics):
-                print(f'{args.condition} is valid. getting image', flush=True)
-                try:
-                    ts_ns, image = cam.get(timeout=5)
-                except TimeoutError:
-                    print("get image timed out", flush=True)
-                    continue
-
-                if args.out_dir != "":
-                    # NOTE(YK) We lose nano seconds precision here
-                    dt = datetime.fromtimestamp(ts_ns / 1e9)
-                    path = os.path.join(args.out_dir,
-                                        dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
-                else:
-                    path = "sample.jpg"
-
-                print("writing image", flush=True)
-                cv2.imwrite(path, image)
-
-                print("uploading image", flush=True)
-                plugin.upload_file(path)
-                
-                print(f'cooling down for {args.cooldown} seconds', flush=True)
-                cooldown = time.time() + args.cooldown
-            else:
-                time.sleep(0.1)
-
-
-def run_periodically(args):
-    print(f"starting image sampler. will sample every {args.interval}s", flush=True)
-
-    with open_data_source(id=args.stream) as cam:
-        while True:
-            time.sleep(args.interval)
-
-            print("getting image", flush=True)
-            try:
-                ts_ns, image = cam.get(timeout=5)
-            except TimeoutError:
-                print("get image timed out", flush=True)
+        if eval(condition, topics):
+            print(f'{args.condition} is valid. getting image', flush=True)
+            ts_ns, image = get_sample(args.stream)
+            if image is None:
                 continue
 
             if args.out_dir != "":
@@ -102,6 +75,38 @@ def run_periodically(args):
 
             print("uploading image", flush=True)
             plugin.upload_file(path)
+            
+            print(f'cooling down for {args.cooldown} seconds', flush=True)
+            cooldown = time.time() + args.cooldown
+        else:
+            time.sleep(0.1)
+
+
+def run_periodically(args):
+    print(f"starting image sampler. will sample every {args.interval}s", flush=True)
+
+    while True:
+        time.sleep(args.interval)
+
+        print("getting image", flush=True)
+        
+        ts_ns, image = get_sample(args.stream)
+        if image is None:
+            continue
+
+        if args.out_dir != "":
+            # NOTE(YK) We lose nano seconds precision here
+            dt = datetime.fromtimestamp(ts_ns / 1e9)
+            path = os.path.join(args.out_dir,
+                                dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+        else:
+            path = "sample.jpg"
+
+        print("writing image", flush=True)
+        cv2.imwrite(path, image)
+
+        print("uploading image", flush=True)
+        plugin.upload_file(path)
 
 
 if __name__ == '__main__':
