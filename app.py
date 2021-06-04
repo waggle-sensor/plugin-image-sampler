@@ -72,6 +72,9 @@ def run_on_event(args):
                 path = "sample.jpg"
 
             print("writing image", flush=True)
+            # NOTE: OpenCV assumes the image is BGR, but we have RGB (PyWaggle converts it into RGB)
+            #       so we flip RGB to BGR to save the image in RGB
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             cv2.imwrite(path, image)
 
             print("uploading image", flush=True)
@@ -104,6 +107,9 @@ def run_periodically(args):
             path = "sample.jpg"
 
         print("writing image", flush=True)
+        # NOTE: OpenCV assumes the image is BGR, but we have RGB (PyWaggle converts it into RGB)
+        #       so we flip RGB to BGR to save the image in RGB
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         cv2.imwrite(path, image)
 
         print("uploading image", flush=True)
