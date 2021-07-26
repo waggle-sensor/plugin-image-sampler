@@ -14,7 +14,7 @@ import re
 import cv2
 
 import waggle.plugin as plugin
-from waggle.data import open_data_source
+from waggle.data.vision import Camera
 
 plugin.init()
 
@@ -30,15 +30,15 @@ def extract_topics(expr):
     return topics
 
 
-def get_sample(stream, retry=5, timeout=5):
-    with open_data_source(id=stream) as cam:
-        for n in range(1, retry + 1):
-            try:
-                ts_ns, image = cam.get(timeout=timeout)
-                return ts_ns, image
-            except TimeoutError:
-                print(f'get image timed out {n} time(s)', flush=True)
-        return None, None
+def save(sample, out_path, publish=False):
+    dt = datetime.fromtimestamp(sample.timestamp / 1e9)
+    base_dir = os.path.join(out_path, dt.astimezone(timezone.utc).strftime('%Y/%m/%d'))
+    os.makedirs(base_dir, os.exist_ok=True)
+    sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+    sample.save(sample_path)
+
+    if publish:
+        plugin.upload_file(sample_path)
 
 
 def run_on_event(args):
@@ -49,6 +49,7 @@ def run_on_event(args):
         topics[t] = 0.
         plugin.subscribe(t.replace('_', '.'))
 
+    camera = Camera(args.stream)
     cooldown = time.time()
     while True:
         msg = plugin.get()
@@ -58,28 +59,16 @@ def run_on_event(args):
             continue
 
         if eval(condition, topics):
-            print(f'{args.condition} is valid. getting image', flush=True)
-            ts_ns, image = get_sample(args.stream)
-            if image is None:
-                raise Exception('failed to receive an image. halting the sampling...')
+            print(f'{args.condition} is valid. getting an image', flush=True)
+            sample = camera.snapshot()
 
+            print("writing the image", flush=True)
             if args.out_dir != "":
-                # NOTE(YK) We lose nano seconds precision here
-                dt = datetime.fromtimestamp(ts_ns / 1e9)
-                path = os.path.join(args.out_dir,
-                                    dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+                save(sample, args.out_dir)
             else:
-                path = "sample.jpg"
+                print("uploading the image", flush=True)
+                save(sample, args.out_dir, publish=True)
 
-            print("writing image", flush=True)
-            # NOTE: OpenCV assumes the image is BGR, but we have RGB (PyWaggle converts it into RGB)
-            #       so we flip RGB to BGR to save the image in RGB
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(path, image)
-
-            print("uploading image", flush=True)
-            plugin.upload_file(path)
-            
             print(f'cooling down for {args.cooldown} seconds', flush=True)
             cooldown = time.time() + args.cooldown
         else:
@@ -89,31 +78,19 @@ def run_on_event(args):
 def run_periodically(args):
     print(f"starting image sampler. will sample every {args.interval}s", flush=True)
 
+    camera = Camera(args.stream)
     while True:
-        time.sleep(args.interval)
+        print("getting an image", flush=True)
 
-        print("getting image", flush=True)
-        
-        ts_ns, image = get_sample(args.stream)
-        if image is None:
-            raise Exception('failed to receive an image. halting the sampling...')
+        sample = camera.snapshot()
 
+        print("writing the image", flush=True)
         if args.out_dir != "":
-            # NOTE(YK) We lose nano seconds precision here
-            dt = datetime.fromtimestamp(ts_ns / 1e9)
-            path = os.path.join(args.out_dir,
-                                dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+            save(sample, args.out_dir)
         else:
-            path = "sample.jpg"
-
-        print("writing image", flush=True)
-        # NOTE: OpenCV assumes the image is BGR, but we have RGB (PyWaggle converts it into RGB)
-        #       so we flip RGB to BGR to save the image in RGB
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(path, image)
-
-        print("uploading image", flush=True)
-        plugin.upload_file(path)
+            print("uploaded image", flush=True)
+            save(sample, args.out_dir, publish=True)
+        time.sleep(args.interval)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 name: "image-sampler"
 description: "Periodical/Trigger-based Image sampler"
-version : "0.2.0"
+version : "0.2.3"
 namespace: "sage"
 source:
   architectures :
