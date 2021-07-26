@@ -32,7 +32,7 @@ def extract_topics(expr):
 
 def save(sample, out_path, publish=False):
     dt = datetime.fromtimestamp(sample.timestamp / 1e9)
-    base_dir = os.path.join(out_path, dt.astimezone(timezone.utc).strftime('%Y/%m/%d'))
+    base_dir = os.path.join(out_path, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
     os.makedirs(base_dir, exist_ok=True)
     sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
     sample.save(sample_path)
