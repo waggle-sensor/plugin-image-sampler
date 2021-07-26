@@ -1,19 +1,21 @@
 name: "image-sampler"
 description: "Periodical/Trigger-based Image sampler"
 version : "0.2.3"
-namespace: "sage"
+namespace: "waggle"
 source:
   architectures :
     - "linux/amd64"
     - "linux/arm64"
   url: "https://github.com/waggle-sensor/plugin-image-sampler.git"
-resources:
-  - type: "RGB_image_producer"
-    min_resolution: "600x800"
+  branch: main
 inputs:
-  - id: "interval"
-    type: "int"
-  - id: "stream"
-    type: "string"
-  - id: "out-dir"
-    type: "string"
+  - id: interval
+    type: int
+  - id: stream
+    type: string
+  - id: out-dir
+    type: string
+  - id: condition
+    type: string
+  - id: cooldown
+    type: int
