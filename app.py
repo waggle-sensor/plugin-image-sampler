@@ -41,8 +41,6 @@ def save(sample, out_path, publish=False):
         sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
         sample.save(sample_path)
 
-    
-
 
 def run_on_event(args):
     print(f'starting image sampler whenever {args.condition} becomes valid', flush=True)

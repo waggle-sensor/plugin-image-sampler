@@ -1,6 +1,6 @@
 name: "image-sampler"
 description: "Periodical/Trigger-based Image sampler"
-version : "0.2.3"
+version : "0.2.5"
 namespace: "waggle"
 source:
   architectures :
