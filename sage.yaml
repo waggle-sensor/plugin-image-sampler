@@ -2,20 +2,26 @@ name: "image-sampler"
 description: "Periodical/Trigger-based Image sampler"
 version : "0.2.5"
 namespace: "waggle"
+authors: "Yongho Kim <yongho.kim@anl.gov>"
+collaborators: "Waggle Team <https://wa8.gl>"
+funding:
+license: "The license agreed by Argonne National Laboratory"
+keywords: "image, sampling, camera, periodic sampling, trigger-based sampling"
+homepage: "https://github.com/waggle-sensor/plugin-imagesampler/blob/main/ecr-meta/ecr-science-description.md"
 source:
   architectures :
     - "linux/amd64"
     - "linux/arm64"
   url: "https://github.com/waggle-sensor/plugin-image-sampler.git"
-  branch: main
+  branch: "main"
 inputs:
-  - id: interval
-    type: int
-  - id: stream
-    type: string
-  - id: out-dir
-    type: string
-  - id: condition
-    type: string
-  - id: cooldown
-    type: int
+  - id: "interval"
+    type: "int"
+  - id: "stream"
+    type: "string"
+  - id: "out-dir"
+    type: "string"
+  - id: "condition"
+    type: "string"
+  - id: "cooldown"
+    type: "int"

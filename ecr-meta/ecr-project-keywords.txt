@@ -1,1 +1,0 @@
-image, sampling, camera, periodic sampling, trigger-based sampling
