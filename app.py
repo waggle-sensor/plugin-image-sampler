@@ -106,7 +106,7 @@ if __name__ == '__main__':
         help='Path to save images locally in %Y-%m-%dT%H:%M:%S%z.jpg format')
     parser.add_argument(
         '-interval', dest='interval',
-        action='store', default=300, type=int,
+        action='store', default=300., type=float,
         help='Inference interval in seconds')
     parser.add_argument(
         '-condition', dest='condition',

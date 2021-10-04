@@ -16,7 +16,7 @@ source:
   branch: "main"
 inputs:
   - id: "interval"
-    type: "int"
+    type: "float"
   - id: "stream"
     type: "string"
   - id: "out-dir"
