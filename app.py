@@ -104,7 +104,7 @@ def run_periodically(args):
                 print("writing the image", flush=True)
                 q.put(sample)
                 time_to_capture = int(sampled_time + args.interval)
-            time.sleep(0.01)
+            time.sleep(0.1)
         
     except Exception as ex:
         print(f'Error: {str(ex)}')
