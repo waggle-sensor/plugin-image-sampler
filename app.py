@@ -10,6 +10,7 @@ import time
 import os
 import argparse
 import re
+from multiprocessing import Process, Queue
 
 import cv2
 
@@ -79,19 +80,37 @@ def run_on_event(args):
 def run_periodically(args):
     print(f"starting image sampler. will sample every {args.interval}s", flush=True)
 
-    camera = Camera(args.stream)
-    while True:
-        print("getting an image", flush=True)
-
-        sample = camera.snapshot()
-
-        print("writing the image", flush=True)
-        if args.out_dir != "":
-            save(sample, args.out_dir)
-        else:
-            print("uploaded image", flush=True)
-            save(sample, args.out_dir, publish=True)
-        time.sleep(args.interval)
+    def worker(queue, out_dir):
+        while True:
+            msg = queue.get()
+            if msg is None:
+                break
+            else:
+                sample = msg
+                if out_dir != "":
+                    save(sample, out_dir)
+                else:
+                    print("uploaded image", flush=True)
+                    save(sample, out_dir, publish=True)
+    q = Queue()
+    p = Process(target=worker, args=(q, args.out_dir))
+    p.start()
+    try:
+        camera = Camera(args.stream)
+        time_to_capture = time.time()
+        for sample in camera.stream():
+            sampled_time = sample.timestamp / 1e9
+            if sampled_time > time_to_capture:
+                print("writing the image", flush=True)
+                q.put(sample)
+                time_to_capture = int(sampled_time + args.interval)
+            time.sleep(0.01)
+        
+    except Exception as ex:
+        print(f'Error: {str(ex)}')
+    finally:
+        q.put(None)
+        p.join()
 
 
 if __name__ == '__main__':
@@ -107,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-interval', dest='interval',
         action='store', default=300., type=float,
-        help='Inference interval in seconds')
+        help='Sampling interval in seconds')
     parser.add_argument(
         '-condition', dest='condition',
         action='store', default="", type=str,

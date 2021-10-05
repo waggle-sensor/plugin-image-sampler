@@ -1,5 +1,5 @@
 FROM waggle/plugin-base:1.1.1-base
-LABEL version="0.2.5" \
+LABEL version="0.2.7" \
       description="Periodical/Trigger-based Image sampler"
 
 # COPY app.py /app/
