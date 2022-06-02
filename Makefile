@@ -1,4 +1,4 @@
-RELEASE?=0.2.7
+RELEASE?=0.0.0
 PLATFORM?=linux/amd64,linux/arm64
 IMAGE=image-sampler
 

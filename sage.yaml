@@ -1,6 +1,6 @@
 name: "imagesampler"
 description: "Periodical/Trigger-based Image sampler"
-version : "0.2.7"
+version : "0.3.0"
 namespace: "waggle"
 authors: "Yongho Kim <yongho.kim@anl.gov>"
 collaborators: "Waggle Team <https://wa8.gl>"
@@ -12,7 +12,7 @@ source:
   architectures :
     - "linux/amd64"
     - "linux/arm64"
-  url: "https://github.com/waggle-sensor/plugin-image-sampler.git"
+  url: "https://github.com/waggle-sensor/plugin-imagesampler.git"
   branch: "main"
 inputs:
   - id: "interval"

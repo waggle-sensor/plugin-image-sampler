@@ -6,141 +6,71 @@
 #           http://www.wa8.gl
 # ANL:waggle-license
 from datetime import datetime, timezone
+import logging
 import time
 import os
 import argparse
-import re
-from multiprocessing import Process, Queue
 
-import cv2
-
-import waggle.plugin as plugin
+from waggle.plugin import Plugin
 from waggle.data.vision import Camera
+from croniter import croniter
 
-plugin.init()
-
-
-def extract_topics(expr):
-    topics = re.findall(r"\b[a-z]\w+", expr)
-    for reserved in ['or', 'and']:
-        while True:
-            try:
-                topics.remove(reserved)
-            except ValueError:
-                break
-    return topics
+logger = logging.getLogger(__name__)
 
 
-def save(sample, out_path, publish=False):
-    if publish:
-        sample.save('sample.jpg')
-        plugin.upload_file('sample.jpg')
-    else:
-        dt = datetime.fromtimestamp(sample.timestamp / 1e9)
-        base_dir = os.path.join(out_path, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
-        os.makedirs(base_dir, exist_ok=True)
-        sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
-        sample.save(sample_path)
-
-
-def run_on_event(args):
-    print(f'starting image sampler whenever {args.condition} becomes valid', flush=True)
-    topics = {}
-    condition = args.condition.replace('.', '_')
-    for t in extract_topics(condition):
-        topics[t] = 0.
-        plugin.subscribe(t.replace('_', '.'))
-
-    camera = Camera(args.stream)
-    cooldown = time.time()
-    while True:
-        msg = plugin.get()
-        topics[msg.name.replace('.', '_')] = msg.value
-        if time.time() < cooldown:
-            time.sleep(0.1)
-            continue
-
-        if eval(condition, topics):
-            print(f'{args.condition} is valid. getting an image', flush=True)
-            sample = camera.snapshot()
-
-            print("writing the image", flush=True)
-            if args.out_dir != "":
-                save(sample, args.out_dir)
-            else:
-                print("uploading the image", flush=True)
-                save(sample, args.out_dir, publish=True)
-
-            print(f'cooling down for {args.cooldown} seconds', flush=True)
-            cooldown = time.time() + args.cooldown
+def capture(args):
+    sample_file_name = "sample.jpg"
+    with Plugin() as plugin, Camera(args.stream) as cam:
+        sample = cam.snapshot()
+        if args.out_dir == "":
+            sample.save(sample_file_name)
+            plugin.upload_file(sample_file_name)
         else:
-            time.sleep(0.1)
+            dt = datetime.fromtimestamp(sample.timestamp / 1e9)
+            base_dir = os.path.join(args.out_dir, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
+            os.makedirs(base_dir, exist_ok=True)
+            sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+            sample.save(sample_path)
 
 
-def run_periodically(args):
-    print(f"starting image sampler. will sample every {args.interval}s", flush=True)
-
-    def worker(queue, out_dir):
-        while True:
-            msg = queue.get()
-            if msg is None:
-                break
-            else:
-                sample = msg
-                if out_dir != "":
-                    save(sample, out_dir)
-                else:
-                    print("uploaded image", flush=True)
-                    save(sample, out_dir, publish=True)
-    q = Queue()
-    p = Process(target=worker, args=(q, args.out_dir))
-    p.start()
-    try:
-        camera = Camera(args.stream)
-        time_to_capture = time.time()
-        for sample in camera.stream():
-            sampled_time = sample.timestamp / 1e9
-            if sampled_time > time_to_capture:
-                print("writing the image", flush=True)
-                q.put(sample)
-                time_to_capture = int(sampled_time + args.interval)
-            time.sleep(0.1)
-        
-    except Exception as ex:
-        print(f'Error: {str(ex)}')
-    finally:
-        q.put(None)
-        p.join()
+def run(args):
+    logger.info("starting image sampler.")
+    if args.cronjob == "":
+        logger.info("capturing...")
+        capture(args)
+        return 0
+    
+    logger.info("cronjob style sampling triggered")
+    if not croniter.is_valid(args.cronjob):
+        logger.error(f'cronjob format {args.cronjob} is not valid')
+        return 1
+    now = datetime.datetime.now(timezone.utc)
+    cron = croniter(args.cronjob, now)
+    for n in cron.get_next(datetime.datetime).replace(tzinfo=timezone.utc):
+        next_in_seconds = (n - now).seconds
+        logger.info(f'sleeping for {next_in_seconds} seconds')
+        time.sleep(next_in_seconds)
+        logger.info("capturing...")
+        capture(args)
+    return 0
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-stream', dest='stream',
-        action='store', default="camera",
+        action='store', default="camera", type=str,
         help='ID or name of a stream, e.g. sample')
     parser.add_argument(
         '-out-dir', dest='out_dir',
-        action='store', default="",
+        action='store', default="", type=str,
         help='Path to save images locally in %Y-%m-%dT%H:%M:%S%z.jpg format')
     parser.add_argument(
-        '-interval', dest='interval',
-        action='store', default=300., type=float,
-        help='Sampling interval in seconds')
-    parser.add_argument(
-        '-condition', dest='condition',
+        '-cronjob', dest='cronjob',
         action='store', default="", type=str,
-        help='Triggering condition')
-    parser.add_argument(
-        '-cooldown', dest='cooldown',
-        action='store', default=5, type=int,
-        help='Cooldown in seconds after a trigger')
+        help='Time interval expressed in cronjob style')
 
     args = parser.parse_args()
     if args.out_dir != "":
         os.makedirs(args.out_dir, exist_ok=True)
-
-    if args.condition == "":
-        run_periodically(args)
-    else:
-        run_on_event(args)
+    exit(run(args))
