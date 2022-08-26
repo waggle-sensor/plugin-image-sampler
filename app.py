@@ -18,26 +18,26 @@ from croniter import croniter
 logger = logging.getLogger(__name__)
 
 
-def capture(args):
+def capture(plugin, cam, args):
     sample_file_name = "sample.jpg"
-    with Plugin() as plugin, Camera(args.stream) as cam:
-        sample = cam.snapshot()
-        if args.out_dir == "":
-            sample.save(sample_file_name)
-            plugin.upload_file(sample_file_name)
-        else:
-            dt = datetime.fromtimestamp(sample.timestamp / 1e9)
-            base_dir = os.path.join(args.out_dir, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
-            os.makedirs(base_dir, exist_ok=True)
-            sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
-            sample.save(sample_path)
+    sample = cam.snapshot()
+    if args.out_dir == "":
+        sample.save(sample_file_name)
+        plugin.upload_file(sample_file_name)
+    else:
+        dt = datetime.fromtimestamp(sample.timestamp / 1e9)
+        base_dir = os.path.join(args.out_dir, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
+        os.makedirs(base_dir, exist_ok=True)
+        sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
+        sample.save(sample_path)
 
 
 def run(args):
     logger.info("starting image sampler.")
     if args.cronjob == "":
         logger.info("capturing...")
-        capture(args)
+        with Plugin() as plugin, Camera(args.stream) as cam:
+            capture(plugin, cam, args)
         return 0
     
     logger.info("cronjob style sampling triggered")
@@ -46,12 +46,14 @@ def run(args):
         return 1
     now = datetime.datetime.now(timezone.utc)
     cron = croniter(args.cronjob, now)
-    for n in cron.get_next(datetime.datetime).replace(tzinfo=timezone.utc):
-        next_in_seconds = (n - now).seconds
-        logger.info(f'sleeping for {next_in_seconds} seconds')
-        time.sleep(next_in_seconds)
-        logger.info("capturing...")
-        capture(args)
+    sample_file_name = "sample.jpg"
+    with Plugin() as plugin, Camera(args.stream) as cam:
+        for n in cron.get_next(datetime.datetime).replace(tzinfo=timezone.utc):
+            next_in_seconds = (n - now).seconds
+            logger.info(f'sleeping for {next_in_seconds} seconds')
+            time.sleep(next_in_seconds)
+            logger.info("capturing...")
+            capture(plugin, cam, args)
     return 0
 
 
