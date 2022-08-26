@@ -44,12 +44,12 @@ def run(args):
     if not croniter.is_valid(args.cronjob):
         logger.error(f'cronjob format {args.cronjob} is not valid')
         return 1
-    now = datetime.datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
     cron = croniter(args.cronjob, now)
-    sample_file_name = "sample.jpg"
     with Plugin() as plugin, Camera(args.stream) as cam:
-        for n in cron.get_next(datetime.datetime).replace(tzinfo=timezone.utc):
-            next_in_seconds = (n - now).seconds
+        while True:
+            n = cron.get_next(datetime).replace(tzinfo=timezone.utc)
+            next_in_seconds = (n - now).total_seconds()
             logger.info(f'sleeping for {next_in_seconds} seconds')
             time.sleep(next_in_seconds)
             logger.info("capturing...")
