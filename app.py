@@ -15,7 +15,10 @@ from waggle.plugin import Plugin
 from waggle.data.vision import Camera
 from croniter import croniter
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(message)s',
+    datefmt='%Y/%m/%d %H:%M:%S')
 
 
 def capture(plugin, cam, args):
@@ -33,26 +36,28 @@ def capture(plugin, cam, args):
 
 
 def run(args):
-    logger.info("starting image sampler.")
+    logging.info("starting image sampler.")
     if args.cronjob == "":
-        logger.info("capturing...")
+        logging.info("capturing...")
         with Plugin() as plugin, Camera(args.stream) as cam:
             capture(plugin, cam, args)
         return 0
     
-    logger.info("cronjob style sampling triggered")
+    logging.info("cronjob style sampling triggered")
     if not croniter.is_valid(args.cronjob):
-        logger.error(f'cronjob format {args.cronjob} is not valid')
+        logging.error(f'cronjob format {args.cronjob} is not valid')
         return 1
     now = datetime.now(timezone.utc)
     cron = croniter(args.cronjob, now)
     with Plugin() as plugin, Camera(args.stream) as cam:
         while True:
             n = cron.get_next(datetime).replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
             next_in_seconds = (n - now).total_seconds()
-            logger.info(f'sleeping for {next_in_seconds} seconds')
-            time.sleep(next_in_seconds)
-            logger.info("capturing...")
+            if next_in_seconds > 0:
+                logging.info(f'sleeping for {next_in_seconds} seconds')
+                time.sleep(next_in_seconds)
+            logging.info("capturing...")
             capture(plugin, cam, args)
     return 0
 
