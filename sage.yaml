@@ -1,6 +1,6 @@
 name: "imagesampler"
 description: "Periodical/Trigger-based Image sampler"
-version : "0.3.1"
+version : "0.3.2"
 namespace: "waggle"
 authors: "Yongho Kim <yongho.kim@anl.gov>"
 collaborators: "Waggle Team <https://wa8.gl>"
