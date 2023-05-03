@@ -49,7 +49,7 @@ def run(args):
         return 1
     now = datetime.now(timezone.utc)
     cron = croniter(args.cronjob, now)
-    with Plugin() as plugin, Camera(args.stream) as cam:
+    with Plugin() as plugin:
         while True:
             n = cron.get_next(datetime).replace(tzinfo=timezone.utc)
             now = datetime.now(timezone.utc)
@@ -58,7 +58,8 @@ def run(args):
                 logging.info(f'sleeping for {next_in_seconds} seconds')
                 time.sleep(next_in_seconds)
             logging.info("capturing...")
-            capture(plugin, cam, args)
+            with Camera(args.stream) as cam:
+                capture(plugin, cam, args)
     return 0
 
 
