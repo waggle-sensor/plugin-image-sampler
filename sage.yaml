@@ -16,7 +16,7 @@ source:
   branch: "main"
 inputs:
   - id: "stream"
-    type: "list"
+    type: "string"
   - id: "out-dir"
     type: "string"
   - id: "cronjob"
