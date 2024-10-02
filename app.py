@@ -10,6 +10,7 @@ import logging
 import time
 import os
 import argparse
+from multiprocessing import Process
 
 from waggle.plugin import Plugin
 from waggle.data.vision import Camera
@@ -21,64 +22,81 @@ logging.basicConfig(
     datefmt='%Y/%m/%d %H:%M:%S')
 
 
-def capture(plugin, cam, args):
-    sample_file_name = "sample.jpg"
-    sample = cam.snapshot()
-    if args.out_dir == "":
+def capture(plugin, stream, out_dir=""):
+    sample_file_name = f'{stream}.jpg'
+    with Camera(stream) as cam:
+        sample = cam.snapshot()
+    if out_dir == "":
         sample.save(sample_file_name)
-        plugin.upload_file(sample_file_name)
+        # The camera name is added in the meta
+        meta = {
+            "camera": stream,
+        }
+        plugin.upload_file(sample_file_name, meta=meta)
     else:
         dt = datetime.fromtimestamp(sample.timestamp / 1e9)
-        base_dir = os.path.join(args.out_dir, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
+        base_dir = os.path.join(out_dir, stream, dt.astimezone(timezone.utc).strftime('%Y/%m/%d/%H'))
         os.makedirs(base_dir, exist_ok=True)
         sample_path = os.path.join(base_dir, dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z.jpg'))
         sample.save(sample_path)
 
 
-def run(args):
-    logging.info("starting image sampler.")
-    if args.cronjob == "":
-        logging.info("capturing...")
-        with Plugin() as plugin, Camera(args.stream) as cam:
-            capture(plugin, cam, args)
+def run(stream, cronjob, out_dir=""):
+    logger_header = f'Stream {stream}: '
+    logging.info(f'{logger_header}starting image sampler.')
+    if cronjob == "":
+        logging.info(f'{logger_header}capturing...')
+        with Plugin() as plugin:
+            capture(plugin, stream, out_dir)
         return 0
     
-    logging.info("cronjob style sampling triggered")
-    if not croniter.is_valid(args.cronjob):
-        logging.error(f'cronjob format {args.cronjob} is not valid')
+    logging.info(f'{logger_header}cronjob style sampling triggered')
+    if not croniter.is_valid(cronjob):
+        logging.error(f'{logger_header}cronjob format {cronjob} is not valid')
         return 1
     now = datetime.now(timezone.utc)
-    cron = croniter(args.cronjob, now)
+    cron = croniter(cronjob, now)
     with Plugin() as plugin:
         while True:
             n = cron.get_next(datetime).replace(tzinfo=timezone.utc)
             now = datetime.now(timezone.utc)
             next_in_seconds = (n - now).total_seconds()
             if next_in_seconds > 0:
-                logging.info(f'sleeping for {next_in_seconds} seconds')
+                logging.info(f'{logger_header}sleeping for {next_in_seconds} seconds')
                 time.sleep(next_in_seconds)
-            logging.info("capturing...")
-            with Camera(args.stream) as cam:
-                capture(plugin, cam, args)
+            logging.info(f'{logger_header}capturing...')
+            capture(plugin, stream, out_dir)
+    return 0
+
+
+def main(args):
+    workers = []
+    for stream in args.stream:
+        worker = Process(target=run, args=(stream, args.cronjob, args.out_dir))
+        workers.append(worker)
+        worker.start()
+
+    for worker in workers:
+        worker.join()
     return 0
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-stream', dest='stream',
-        action='store', default="camera", type=str,
-        help='ID or name of a stream, e.g. sample')
+        '--stream', dest='stream',
+        action='append',
+        help='ID or name of a stream. Multiple streams can be specified, each stream with the --stream option.')
     parser.add_argument(
-        '-out-dir', dest='out_dir',
+        '--out-dir', dest='out_dir',
         action='store', default="", type=str,
-        help='Path to save images locally in %Y-%m-%dT%H:%M:%S%z.jpg format')
+        help='Path to save images locally in %%Y-%%m-%%dT%%H:%%M:%%S%%z.jpg format')
     parser.add_argument(
-        '-cronjob', dest='cronjob',
+        '--cronjob', dest='cronjob',
         action='store', default="", type=str,
         help='Time interval expressed in cronjob style')
 
     args = parser.parse_args()
     if args.out_dir != "":
         os.makedirs(args.out_dir, exist_ok=True)
-    exit(run(args))
+    exit(main(args))

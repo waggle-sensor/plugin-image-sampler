@@ -1,6 +1,9 @@
 # Image Sampler Plugin
 
-This plugin utilizes [PyWaggle](https://github.com/waggle-sensor/pywaggle) library to capture frames from a stream. Captured frames are stored in a local storage as a jpeg image. 
+This plugin utilizes [PyWaggle](https://github.com/waggle-sensor/pywaggle) library to capture frames from a stream. Captured frames are stored in a local storage as a jpeg image.
+
+## Usage
+Please refer to the [description](ecr-meta/ecr-science-description.md#how-to-use).
 
 ## Developer Notes
 
