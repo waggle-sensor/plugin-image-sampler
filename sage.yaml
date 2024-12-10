@@ -1,6 +1,6 @@
 name: "imagesampler"
 description: "Periodical/Trigger-based Image sampler"
-version : "0.3.5"
+version : "0.3.6"
 namespace: "waggle"
 authors: "Yongho Kim <yongho.kim@anl.gov>"
 collaborators: "Waggle Team <https://wa8.gl>"
@@ -16,6 +16,8 @@ source:
   branch: "main"
 inputs:
   - id: "stream"
+    type: "string"
+  - id: "camera-name"
     type: "string"
   - id: "out-dir"
     type: "string"

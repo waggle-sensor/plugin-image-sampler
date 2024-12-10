@@ -18,6 +18,18 @@ python3 app.py \
   --stream top_camera
 ```
 
+### Naming streams
+
+```bash
+# The count and order of the names
+# must match with given streams
+python3 app.py \
+  --name street \
+  --stream bottom_camera \
+  --name sky \
+  --stream top_camera
+```
+
 ### Capturing and Saving Images Locally
 
 ```bash

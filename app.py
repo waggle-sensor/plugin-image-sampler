@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt='%Y/%m/%d %H:%M:%S')
 
 
-def capture(plugin, stream, out_dir=""):
+def capture(plugin, stream, stream_name, out_dir=""):
     sample_file_name = f'{stream}.jpg'
     with Camera(stream) as cam:
         sample = cam.snapshot()
@@ -30,7 +30,7 @@ def capture(plugin, stream, out_dir=""):
         sample.save(sample_file_name)
         # The camera name is added in the meta
         meta = {
-            "camera": stream,
+            "camera": stream_name,
         }
         plugin.upload_file(sample_file_name, meta=meta)
     else:
@@ -41,13 +41,13 @@ def capture(plugin, stream, out_dir=""):
         sample.save(sample_path)
 
 
-def run(stream, cronjob, out_dir=""):
-    logger_header = f'Stream {stream}: '
+def run(stream, stream_name, cronjob, out_dir=""):
+    logger_header = f'Stream {stream} name: {stream_name}'
     logging.info(f'{logger_header}starting image sampler.')
     if cronjob == "":
         logging.info(f'{logger_header}capturing...')
         with Plugin() as plugin:
-            capture(plugin, stream, out_dir)
+            capture(plugin, stream, stream_name, out_dir)
         return 0
     
     logging.info(f'{logger_header}cronjob style sampling triggered')
@@ -65,16 +65,23 @@ def run(stream, cronjob, out_dir=""):
                 logging.info(f'{logger_header}sleeping for {next_in_seconds} seconds')
                 time.sleep(next_in_seconds)
             logging.info(f'{logger_header}capturing...')
-            capture(plugin, stream, out_dir)
+            capture(plugin, stream, stream_name, out_dir)
     return 0
 
 
 def main(args):
     workers = []
-    for stream in args.stream:
-        worker = Process(target=run, args=(stream, args.cronjob, args.out_dir))
-        workers.append(worker)
-        worker.start()
+    if len(args.stream_name) > 0:
+        for stream, name in zip(args.stream, args.stream_name):
+            worker = Process(target=run, args=(stream, name, args.cronjob, args.out_dir))
+            workers.append(worker)
+            worker.start()
+    else:
+        for stream in args.stream:
+            worker = Process(target=run, args=(stream, stream, args.cronjob, args.out_dir))
+            workers.append(worker)
+            worker.start()
+
 
     for worker in workers:
         worker.join()
@@ -87,6 +94,10 @@ if __name__ == '__main__':
         '--stream', dest='stream',
         action='append',
         help='ID or name of a stream. Multiple streams can be specified, each stream with the --stream option.')
+    parser.add_argument(
+        '--stream-name', dest='stream_name',
+        action='append',
+        help='(optional) Name of the stream to report. When specified the count and order should match with given streams.')
     parser.add_argument(
         '--out-dir', dest='out_dir',
         action='store', default="", type=str,
