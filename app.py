@@ -23,7 +23,7 @@ logging.basicConfig(
 
 
 def capture(plugin, stream, stream_name, out_dir=""):
-    sample_file_name = f'{stream}.jpg'
+    sample_file_name = "sample.jpg"
     with Camera(stream) as cam:
         sample = cam.snapshot()
     if out_dir == "":
@@ -71,8 +71,8 @@ def run(stream, stream_name, cronjob, out_dir=""):
 
 def main(args):
     workers = []
-    if len(args.stream_name) > 0:
-        for stream, name in zip(args.stream, args.stream_name):
+    if len(args.name) > 0:
+        for stream, name in zip(args.stream, args.name):
             worker = Process(target=run, args=(stream, name, args.cronjob, args.out_dir))
             workers.append(worker)
             worker.start()
@@ -95,7 +95,7 @@ if __name__ == '__main__':
         action='append',
         help='ID or name of a stream. Multiple streams can be specified, each stream with the --stream option.')
     parser.add_argument(
-        '--stream-name', dest='stream_name',
+        '--name', dest='name',
         action='append',
         help='(optional) Name of the stream to report. When specified the count and order should match with given streams.')
     parser.add_argument(
